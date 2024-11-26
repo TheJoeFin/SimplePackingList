@@ -45,6 +45,9 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private int numberOfFormalEvents = 0;
 
+    [ObservableProperty]
+    private bool hasLaundry = false;
+
     partial void OnEndDateChanged(DateTimeOffset? oldValue, DateTimeOffset? newValue)
     {
         UpdateDaysAndText();
@@ -85,6 +88,11 @@ public partial class MainViewModel : ObservableObject
         UpdateDaysAndText();
     }
 
+    partial void OnHasLaundryChanged(bool value)
+    {
+        UpdateDaysAndText();
+    }
+
     public MainViewModel()
     {
         
@@ -115,19 +123,24 @@ public partial class MainViewModel : ObservableObject
 
         PackingText += Environment.NewLine + standardStuff;
 
+        int effectiveDays = numberOfDays;
+
+        if (HasLaundry)
+            effectiveDays = Math.Min(7, numberOfDays);
+
         string clothes = $"""
 
-            - {numberOfDays} shirts
-            - { Math.Ceiling( numberOfDays / 3.0)} pair(s) of pants
-            - {numberOfDays} pair(s) of socks
-            - {numberOfDays} pair(s) of underwear
+            - {effectiveDays} shirts
+            - { Math.Ceiling( effectiveDays / 3.0)} pair(s) of pants
+            - {effectiveDays} pair(s) of socks
+            - {effectiveDays} pair(s) of underwear
             """;
 
         PackingText += Environment.NewLine + clothes;
 
         if (IsRunning)
         {
-            int numberOfRuns = (int)Math.Ceiling(numberOfDays / 3.0);
+            int numberOfRuns = (int)Math.Ceiling(effectiveDays / 3.0);
             PackingText += Environment.NewLine + $"""
 
                 - running shoes
