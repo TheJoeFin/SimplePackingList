@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Page
+    x:Class="SimplePackingList.MainPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:local="using:SimplePackingList"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
+    DataContext="{x:Bind ViewModel}"
+    mc:Ignorable="d">
+
+    <Grid
+        MaxWidth="600"
+        Padding="20"
+        Background="{ThemeResource CardBackgroundFillColorDefault}"
+        ColumnSpacing="20">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="auto" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <Grid.RowDefinitions>
+            <RowDefinition Height="auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <TextBlock
+            Grid.Row="0"
+            Style="{ThemeResource SubheaderTextBlockStyle}"
+            Text="Trip options" />
+        <StackPanel
+            Grid.Row="1"
+            HorizontalAlignment="Center"
+            Orientation="Vertical"
+            Spacing="20">
+            <Grid ColumnSpacing="12" RowSpacing="12">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="auto" />
+                    <RowDefinition Height="auto" />
+                </Grid.RowDefinitions>
+
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="auto" />
+                    <ColumnDefinition Width="auto" />
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Text="Start Date" />
+                <CalendarDatePicker
+                    x:Name="StartDateCalendar"
+                    Grid.Row="1"
+                    Date="{x:Bind ViewModel.StartDate, Mode=TwoWay}"
+                    IsTodayHighlighted="True" />
+
+                <TextBlock Grid.Column="1" Text="End Date" />
+                <CalendarDatePicker
+                    x:Name="EndDateCalendar"
+                    Grid.Row="1"
+                    Grid.Column="1"
+                    Date="{x:Bind ViewModel.EndDate, Mode=TwoWay}"
+                    IsTodayHighlighted="True" />
+            </Grid>
+
+            <TextBlock Text="Number of formal events" />
+            <NumberBox
+                Minimum="0"
+                SpinButtonPlacementMode="Inline"
+                Value="{x:Bind ViewModel.NumberOfFormalEvents, Mode=TwoWay}" />
+            <CheckBox Content="Running" IsChecked="{x:Bind ViewModel.IsRunning, Mode=TwoWay}" />
+            <CheckBox Content="Hiking" IsChecked="{x:Bind ViewModel.IsHiking, Mode=TwoWay}" />
+            <CheckBox Content="Swimming" IsChecked="{x:Bind ViewModel.IsSwimming, Mode=TwoWay}" />
+            <CheckBox Content="Snow Sports" IsChecked="{x:Bind ViewModel.IsSnowSport, Mode=TwoWay}" />
+            <CheckBox Content="Need a gift" IsChecked="{x:Bind ViewModel.IsGifting, Mode=TwoWay}" />
+
+        </StackPanel>
+        <TextBlock
+            Grid.Row="0"
+            Grid.Column="1"
+            VerticalAlignment="Bottom"
+            Style="{ThemeResource SubtitleTextBlockStyle}"
+            Text="Simple Packing List" />
+        <HyperlinkButton
+            Grid.Column="1"
+            HorizontalAlignment="Right"
+            Command="{x:Bind ViewModel.CopyToClipboardCommand}"
+            Content="Copy" />
+        <TextBlock
+            Grid.Row="1"
+            Grid.Column="1"
+            FontFamily="Courier New"
+            IsTextSelectionEnabled="True"
+            Style="{ThemeResource BodyTextBlockStyle}"
+            Text="{x:Bind ViewModel.PackingText, Mode=OneWay}" />
+    </Grid>
+</Page>
