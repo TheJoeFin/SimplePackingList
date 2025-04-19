@@ -6,7 +6,6 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:local="using:SimplePackingList"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
     DataContext="{x:Bind ViewModel}"
     mc:Ignorable="d">
 
@@ -31,7 +30,7 @@
             Text="Trip options" />
         <StackPanel
             Grid.Row="1"
-            HorizontalAlignment="Center"
+            HorizontalAlignment="Left"
             Orientation="Vertical"
             Spacing="20">
             <Grid ColumnSpacing="12" RowSpacing="12">
