@@ -33,6 +33,17 @@
             HorizontalAlignment="Left"
             Orientation="Vertical"
             Spacing="20">
+            <!--  Google Places Search  -->
+            <TextBlock Text="Destination" />
+            <AutoSuggestBox
+                x:Name="PlacesSearchBox"
+                Width="280"
+                ItemsSource="{x:Bind ViewModel.PlaceSuggestions}"
+                PlaceholderText="Search for a place..."
+                QuerySubmitted="{x:Bind ViewModel.SearchPlaces, Mode=OneWay}"
+                SuggestionChosen="{x:Bind ViewModel.OnPlaceSelected, Mode=OneWay}"
+                TextChanged="{x:Bind ViewModel.OnPlacesTextChanged, Mode=OneWay}" />
+
             <Grid ColumnSpacing="12" RowSpacing="12">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="auto" />
