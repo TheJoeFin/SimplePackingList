@@ -16,7 +16,7 @@ public class WeatherService : IWeatherService
 {
     private readonly HttpClient _httpClient;
     private readonly string _apiKey;
-    private const string OneCallApiUrl = "https://api.openweathermap.org/data/3.0/onecall";
+    private const string OneCallApiUrl = "https://api.openweathermap.org/data/3.0/onecall/timemachine";
 
     public WeatherService()
     {
@@ -52,12 +52,22 @@ public class WeatherService : IWeatherService
             // OneCall API requires these parameters
             string requestUrl = $"{OneCallApiUrl}?lat={latitude}&lon={longitude}&units={weatherUnits}&dt={timestamp}&appid={_apiKey}";
 
-            Rootobject? response = await _httpClient.GetFromJsonAsync<Rootobject>(requestUrl, cancellationToken);
-            // Rootobject? response = null;
-            // JsonDocument? jsonDoc = await _httpClient.GetFromJsonAsync<JsonDocument>(requestUrl, cancellationToken);
+            // For debugging
+            System.Diagnostics.Debug.WriteLine($"Making API request to: {requestUrl}");
+
+            // Deserialize the response
+            JsonSerializerOptions options = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = false // OpenWeatherMap uses lowercase property names
+            };
+
+            OpenWeatherResponse? response = await _httpClient.GetFromJsonAsync<OpenWeatherResponse>(requestUrl, options, cancellationToken);
 
             if (response is null)
+            {
+                System.Diagnostics.Debug.WriteLine("API response was null");
                 return null;
+            }
 
             // Process the returned data for the requested date
             // The OneCall v3 API with timestamp returns data for the specific day requested
@@ -65,14 +75,15 @@ public class WeatherService : IWeatherService
             // If we have the data for the requested day in the response
             if (response.data != null && response.data.Length > 0)
             {
-                var weatherData = response.data[0];
+                WeatherData weatherData = response.data[0];
+                System.Diagnostics.Debug.WriteLine($"Received weather data: {JsonSerializer.Serialize(weatherData)}");
 
                 bool hasPrecipitation = false;
                 string condition = string.Empty;
                 string description = string.Empty;
                 string icon = string.Empty;
 
-                if (weatherData.weather.Length > 0)
+                if (weatherData.weather != null && weatherData.weather.Length > 0)
                 {
                     condition = weatherData.weather[0].main;
                     description = weatherData.weather[0].description;
@@ -96,6 +107,10 @@ public class WeatherService : IWeatherService
                     Icon = icon
                 };
             }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine("No data element in the response");
+            }
 
             return null;
         }
@@ -107,24 +122,18 @@ public class WeatherService : IWeatherService
     }
 
     #region API Response Classes
-    // OneCall API v3 response structure
-    private class OneCallResponse
+    // OpenWeatherMap OneCall API v3 response structure
+    public class OpenWeatherResponse
     {
-        [JsonPropertyName("data")]
-        public List<WeatherDataItem> Data { get; set; } = [];
-    }
-
-
-    public class Rootobject
-    {
+        // Use lower case property names to match OpenWeatherMap JSON response
         public float lat { get; set; }
         public float lon { get; set; }
-        public string timezone { get; set; }
+        public string timezone { get; set; } = string.Empty;
         public int timezone_offset { get; set; }
-        public Datum[] data { get; set; }
+        public WeatherData[] data { get; set; } = [];
     }
 
-    public class Datum
+    public class WeatherData
     {
         public int dt { get; set; }
         public int sunrise { get; set; }
@@ -139,61 +148,15 @@ public class WeatherService : IWeatherService
         public int visibility { get; set; }
         public float wind_speed { get; set; }
         public int wind_deg { get; set; }
-        public Weather[] weather { get; set; }
+        public WeatherCondition[] weather { get; set; } = [];
     }
 
-    public class Weather
+    public class WeatherCondition
     {
         public int id { get; set; }
-        public string main { get; set; }
-        public string description { get; set; }
-        public string icon { get; set; }
-    }
-
-
-    private class WeatherDataItem
-    {
-        [JsonPropertyName("dt")]
-        public long Dt { get; set; }
-
-        [JsonPropertyName("temp")]
-        public double Temp { get; set; }
-
-        [JsonPropertyName("min_temp")]
-        public double MinTemp { get; set; }
-
-        [JsonPropertyName("max_temp")]
-        public double MaxTemp { get; set; }
-
-        [JsonPropertyName("humidity")]
-        public int Humidity { get; set; }
-
-        [JsonPropertyName("weather")]
-        public List<WeatherCondition> Weather { get; set; } = [];
-
-        [JsonPropertyName("clouds")]
-        public int Clouds { get; set; }
-
-        [JsonPropertyName("wind_speed")]
-        public double WindSpeed { get; set; }
-
-        [JsonPropertyName("wind_deg")]
-        public int WindDeg { get; set; }
-    }
-
-    private class WeatherCondition
-    {
-        [JsonPropertyName("id")]
-        public int Id { get; set; }
-
-        [JsonPropertyName("main")]
-        public string Main { get; set; } = string.Empty;
-
-        [JsonPropertyName("description")]
-        public string Description { get; set; } = string.Empty;
-
-        [JsonPropertyName("icon")]
-        public string Icon { get; set; } = string.Empty;
+        public string main { get; set; } = string.Empty;
+        public string description { get; set; } = string.Empty;
+        public string icon { get; set; } = string.Empty;
     }
     #endregion
 }
