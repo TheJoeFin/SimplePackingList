@@ -2,6 +2,7 @@
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml.Controls;
+using SimplePackingList.Models;
 using SimplePackingList.Services;
 using System;
 using System.Collections.Generic;
@@ -19,6 +20,8 @@ public partial class MainViewModel : ObservableObject
     private const int _debounceDelay = 500; // milliseconds
     private readonly DispatcherQueue? _dispatcherQueue;
     private readonly IPlacesService _placesService;
+    private readonly IWeatherService _weatherService;
+    private CancellationTokenSource? _weatherCts;
 
     private readonly string standardStuff = """
         - Toothbrush
@@ -62,6 +65,15 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private bool hasLaundry = false;
 
+    [ObservableProperty]
+    private WeatherInfo? weather;
+
+    [ObservableProperty]
+    private string weatherStatus = "No weather data available";
+
+    [ObservableProperty]
+    private bool isLoadingWeather = false;
+
     // Place-related properties
     [ObservableProperty]
     private string destination = string.Empty;
@@ -77,6 +89,7 @@ public partial class MainViewModel : ObservableObject
     partial void OnStartDateChanged(DateTimeOffset? oldValue, DateTimeOffset? newValue)
     {
         UpdateDaysAndText();
+        UpdateWeatherData();
     }
 
     partial void OnIsRunningChanged(bool value)
@@ -117,6 +130,10 @@ public partial class MainViewModel : ObservableObject
     partial void OnDestinationChanged(string oldValue, string newValue)
     {
         UpdateDaysAndText();
+        if (!string.IsNullOrEmpty(newValue))
+        {
+            UpdateWeatherData();
+        }
     }
 
     public MainViewModel()
@@ -124,6 +141,7 @@ public partial class MainViewModel : ObservableObject
         // Get the dispatcher queue for the current thread
         _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
         _placesService = new GooglePlacesService();
+        _weatherService = new WeatherService();
     }
 
     [RelayCommand]
@@ -220,6 +238,62 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
+    private async void UpdateWeatherData()
+    {
+        if (StartDate == null || string.IsNullOrEmpty(Destination))
+        {
+            Weather = null;
+            WeatherStatus = "Set both destination and dates to see weather forecast";
+            return;
+        }
+
+        // Find the selected place in suggestions
+        PlacePrediction? selectedPlace = PlaceSuggestions.FirstOrDefault(p => p.Description == Destination);
+        if (selectedPlace == null || (selectedPlace.Latitude == 0 && selectedPlace.Longitude == 0))
+        {
+            WeatherStatus = "Location coordinates not available for weather forecast";
+            return;
+        }
+
+        try
+        {
+            // Cancel any previous operation
+            _weatherCts?.Cancel();
+            _weatherCts = new CancellationTokenSource();
+
+            IsLoadingWeather = true;
+            WeatherStatus = "Loading weather forecast...";
+
+            var weatherInfo = await _weatherService.GetWeatherForecastAsync(
+                selectedPlace.Latitude, 
+                selectedPlace.Longitude,
+                StartDate.Value,
+                _weatherCts.Token);
+
+            _dispatcherQueue?.TryEnqueue(() =>
+            {
+                Weather = weatherInfo;
+                WeatherStatus = weatherInfo != null 
+                    ? $"Weather forecast: {weatherInfo}" 
+                    : "Weather forecast unavailable for selected date (limited to 5 days ahead)";
+                IsLoadingWeather = false;
+                UpdateDaysAndText(); // Update packing list with weather recommendations
+            });
+        }
+        catch (OperationCanceledException)
+        {
+            // Operation was cancelled, do nothing
+        }
+        catch (Exception ex)
+        {
+            _dispatcherQueue?.TryEnqueue(() =>
+            {
+                WeatherStatus = $"Error loading weather: {ex.Message}";
+                IsLoadingWeather = false;
+            });
+        }
+    }
+
     private void UpdateDaysAndText()
     {
         if (EndDate is null || StartDate is null)
@@ -287,6 +361,56 @@ public partial class MainViewModel : ObservableObject
         if (NumberOfFormalEvents > 0)
         {
             PackingText += Environment.NewLine + $"- {NumberOfFormalEvents} Formal outfit(s)";
+        }
+
+        // Add weather-based recommendations if available
+        if (Weather is not null)
+        {
+            var weatherRecommendations = new List<string>();
+            
+            if (Weather?.IsRainy is true)
+            {
+                weatherRecommendations.Add("- Umbrella");
+                weatherRecommendations.Add("- Raincoat or waterproof jacket");
+                weatherRecommendations.Add("- Waterproof shoes");
+            }
+            
+            if (Weather?.IsSnowy is true)
+            {
+                weatherRecommendations.Add("- Heavy winter coat");
+                weatherRecommendations.Add("- Snow boots");
+                weatherRecommendations.Add("- Gloves");
+                weatherRecommendations.Add("- Winter hat");
+                weatherRecommendations.Add("- Scarf");
+                weatherRecommendations.Add("- Thermal underwear");
+            }
+            
+            if (Weather?.IsCold is true)
+            {
+                weatherRecommendations.Add("- Warm jacket");
+                weatherRecommendations.Add("- Long sleeve shirts");
+                weatherRecommendations.Add("- Sweater or hoodie");
+            }
+            
+            if (Weather?.IsHot is true)
+            {
+                weatherRecommendations.Add("- Sunscreen");
+                weatherRecommendations.Add("- Hat or cap");
+                weatherRecommendations.Add("- Sunglasses");
+                weatherRecommendations.Add("- Light, breathable clothing");
+                weatherRecommendations.Add("- Water bottle");
+            }
+            
+            if (Weather?.IsWindy is true)
+            {
+                weatherRecommendations.Add("- Windbreaker jacket");
+            }
+            
+            if (weatherRecommendations.Count > 0)
+            {
+                PackingText += Environment.NewLine + Environment.NewLine + $"Weather recommendations ({Weather?.ForecastDate:MMM dd}, {Weather?.Condition}):" + Environment.NewLine;
+                PackingText += string.Join(Environment.NewLine, weatherRecommendations);
+            }
         }
     }
 }

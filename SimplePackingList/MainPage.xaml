@@ -93,6 +93,13 @@
             <CheckBox Content="Snow Sports" IsChecked="{x:Bind ViewModel.IsSnowSport, Mode=TwoWay}" />
             <CheckBox Content="Need a gift" IsChecked="{x:Bind ViewModel.IsGifting, Mode=TwoWay}" />
 
+            <StackPanel Visibility="{x:Bind ViewModel.Weather, Mode=OneWay, Converter={StaticResource NullToVisibilityConverter}}">
+                <TextBlock Text="Weather Forecast:" Margin="0,15,0,5" FontWeight="SemiBold"/>
+                <TextBlock Text="{x:Bind ViewModel.WeatherStatus, Mode=OneWay}" TextWrapping="Wrap"/>
+                <ProgressRing IsActive="{x:Bind ViewModel.IsLoadingWeather, Mode=OneWay}" 
+                             Margin="0,5,0,0" Width="20" Height="20" HorizontalAlignment="Left"/>
+            </StackPanel>
+
         </StackPanel>
         <TextBlock
             Grid.Row="0"
