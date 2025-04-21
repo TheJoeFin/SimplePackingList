@@ -1,12 +1,11 @@
+using Microsoft.Windows.ApplicationModel.Resources;
 using System;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Net.Http.Json;
-using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Windows.ApplicationModel.Resources;
 
 namespace SimplePackingList.Services;
 
@@ -14,7 +13,8 @@ public class GooglePlacesService : IPlacesService
 {
     private readonly HttpClient _httpClient;
     private readonly string _apiKey;
-    private const string BaseUrl = "https://maps.googleapis.com/maps/api/place/autocomplete/json";
+    private const string AutocompleteBaseUrl = "https://maps.googleapis.com/maps/api/place/autocomplete/json";
+    private const string DetailsBaseUrl = "https://maps.googleapis.com/maps/api/place/details/json";
 
     public GooglePlacesService()
     {
@@ -25,59 +25,121 @@ public class GooglePlacesService : IPlacesService
         ResourceMap resourceMap = resourceManager.MainResourceMap.GetSubtree("ApiKeys");
         ResourceContext resourceContext = resourceManager.CreateResourceContext();
         _apiKey = resourceMap.GetValue("GooglePlacesApiKey", resourceContext).ValueAsString;
-        
+
         if (string.IsNullOrEmpty(_apiKey))
-        {
             throw new InvalidOperationException("Google Places API key not found in resources");
-        }
     }
 
-    public async Task<List<string>> GetPlaceSuggestionsAsync(string query, CancellationToken cancellationToken)
+    public async Task<List<PlacePrediction>> GetPlaceSuggestionsAsync(string query, CancellationToken cancellationToken)
     {
         try
         {
-            var suggestions = new List<string>();
-            
+            List<PlacePrediction> suggestions = [];
+
             // Build the request URL
-            var requestUrl = $"{BaseUrl}?input={Uri.EscapeDataString(query)}&types=geocode&key={_apiKey}";
-            
+            string requestUrl = $"{AutocompleteBaseUrl}?input={Uri.EscapeDataString(query)}&types=geocode&key={_apiKey}";
+
             // Make the API request
-            var response = await _httpClient.GetFromJsonAsync<PlacesApiResponse>(requestUrl, cancellationToken);
-            
-            if (response is null || response.Status != "OK")
-            {
-                // Handle error or no results
+            PlacesApiResponse? response = await _httpClient.GetFromJsonAsync<PlacesApiResponse>(requestUrl, cancellationToken);
+
+            if (response is null || response.Status is not "OK")
                 return suggestions;
-            }
-            
-            // Extract and return the place descriptions
-            foreach (var prediction in response.Predictions)
+
+            // For each prediction, get its full details including coordinates
+            foreach (PlacePrediction prediction in response.Predictions)
             {
-                suggestions.Add(prediction.Description);
+                // Get place details to retrieve coordinates
+                if (string.IsNullOrEmpty(prediction.PlaceId))
+                    continue;
+
+                try
+                {
+                    PlaceDetailsResponse? placeDetails = await GetPlaceDetailsAsync(prediction.PlaceId, cancellationToken);
+                    if (placeDetails is not null && placeDetails.Result is not null)
+                    {
+                        prediction.Latitude = placeDetails.Result.Geometry?.Location?.Lat ?? 0;
+                        prediction.Longitude = placeDetails.Result.Geometry?.Location?.Lng ?? 0;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error getting place details: {ex.Message}");
+                }
+                
+                suggestions.Add(prediction);
             }
-            
+
             return suggestions;
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Error getting place suggestions: {ex.Message}");
-            return new List<string>();
+            return [];
         }
     }
-    
+
+    private async Task<PlaceDetailsResponse?> GetPlaceDetailsAsync(string placeId, CancellationToken cancellationToken)
+    {
+        string requestUrl = $"{DetailsBaseUrl}?place_id={placeId}&fields=geometry&key={_apiKey}";
+        return await _httpClient.GetFromJsonAsync<PlaceDetailsResponse>(requestUrl, cancellationToken);
+    }
+
     // Classes for deserializing the Google Places API response
     private class PlacesApiResponse
     {
         [JsonPropertyName("status")]
         public string Status { get; set; } = "";
-        
+
         [JsonPropertyName("predictions")]
-        public List<PlacePrediction> Predictions { get; set; } = new();
+        public List<PlacePrediction> Predictions { get; set; } = [];
     }
-    
-    private class PlacePrediction
+
+    // Classes for deserializing the Place Details API response
+    private class PlaceDetailsResponse
     {
-        [JsonPropertyName("description")]
-        public string Description { get; set; } = "";
+        [JsonPropertyName("status")]
+        public string Status { get; set; } = "";
+
+        [JsonPropertyName("result")]
+        public PlaceResult? Result { get; set; }
+    }
+
+    private class PlaceResult
+    {
+        [JsonPropertyName("geometry")]
+        public Geometry? Geometry { get; set; }
+    }
+
+    private class Geometry
+    {
+        [JsonPropertyName("location")]
+        public Location? Location { get; set; }
+    }
+
+    private class Location
+    {
+        [JsonPropertyName("lat")]
+        public double Lat { get; set; }
+
+        [JsonPropertyName("lng")]
+        public double Lng { get; set; }
+    }
+}
+
+public class PlacePrediction
+{
+    [JsonPropertyName("description")]
+    public string Description { get; set; } = "";
+
+    [JsonPropertyName("place_id")]
+    public string PlaceId { get; set; } = "";
+
+    // These properties don't come directly from the API but are populated after getting place details
+    public double Latitude { get; set; }
+    public double Longitude { get; set; }
+
+    public override string ToString()
+    {
+        return Description;
     }
 }

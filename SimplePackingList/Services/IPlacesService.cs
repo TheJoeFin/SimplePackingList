@@ -6,5 +6,5 @@ namespace SimplePackingList.Services;
 
 public interface IPlacesService
 {
-    Task<List<string>> GetPlaceSuggestionsAsync(string query, CancellationToken cancellationToken);
+    Task<List<PlacePrediction>> GetPlaceSuggestionsAsync(string query, CancellationToken cancellationToken);
 }

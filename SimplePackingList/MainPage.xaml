@@ -6,6 +6,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:local="using:SimplePackingList"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:ser="using:SimplePackingList.Services"
     DataContext="{x:Bind ViewModel}"
     mc:Ignorable="d">
 
@@ -42,7 +43,15 @@
                 PlaceholderText="Search for a place..."
                 QuerySubmitted="{x:Bind ViewModel.SearchPlaces, Mode=OneWay}"
                 SuggestionChosen="{x:Bind ViewModel.OnPlaceSelected, Mode=OneWay}"
-                TextChanged="{x:Bind ViewModel.OnPlacesTextChanged, Mode=OneWay}" />
+                TextChanged="{x:Bind ViewModel.OnPlacesTextChanged, Mode=OneWay}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="ser:PlacePrediction">
+                        <StackPanel Orientation="Vertical" Spacing="4">
+                            <TextBlock Text="{x:Bind Description}" />
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </AutoSuggestBox>
 
             <Grid ColumnSpacing="12" RowSpacing="12">
                 <Grid.RowDefinitions>

@@ -20,7 +20,7 @@ public partial class MainViewModel : ObservableObject
     private readonly DispatcherQueue? _dispatcherQueue;
     private readonly IPlacesService _placesService;
 
-    private string standardStuff = """
+    private readonly string standardStuff = """
         - Toothbrush
         - Toothpaste
         - Deodorant
@@ -67,7 +67,7 @@ public partial class MainViewModel : ObservableObject
     private string destination = string.Empty;
 
     [ObservableProperty]
-    private ObservableCollection<string> placeSuggestions = new();
+    private ObservableCollection<PlacePrediction> placeSuggestions = [];
 
     partial void OnEndDateChanged(DateTimeOffset? oldValue, DateTimeOffset? newValue)
     {
@@ -188,13 +188,13 @@ public partial class MainViewModel : ObservableObject
             cancellationToken.ThrowIfCancellationRequested();
 
             // Call the Places API service
-            var suggestions = await _placesService.GetPlaceSuggestionsAsync(searchText, cancellationToken);
+            List<PlacePrediction> suggestions = await _placesService.GetPlaceSuggestionsAsync(searchText, cancellationToken);
 
             // Update the UI on the UI thread
             _dispatcherQueue?.TryEnqueue(() =>
             {
                 PlaceSuggestions.Clear();
-                foreach (string suggestion in suggestions)
+                foreach (PlacePrediction suggestion in suggestions)
                 {
                     PlaceSuggestions.Add(suggestion);
                 }
