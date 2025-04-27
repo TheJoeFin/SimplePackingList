@@ -1,9 +1,11 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.UI.Dispatching;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using SimplePackingList.Models;
 using SimplePackingList.Services;
+using SimplePackingList.Utilities;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -17,11 +19,12 @@ public partial class MainViewModel : ObservableObject
 {
     // Debounce related fields
     private CancellationTokenSource? _placesSearchCts;
-    private const int _debounceDelay = 500; // milliseconds
+    private const int _debounceDelay = 300; // milliseconds
     private readonly DispatcherQueue? _dispatcherQueue;
     private readonly IPlacesService _placesService;
     private readonly IWeatherService _weatherService;
     private CancellationTokenSource? _weatherCts;
+    private readonly DispatcherTimer _llmTimer = new();
 
     private readonly string standardStuff = """
         - Toothbrush
@@ -34,6 +37,9 @@ public partial class MainViewModel : ObservableObject
         """;
 
     private int numberOfDays = 3;
+
+    [ObservableProperty]
+    private string listTitle = "Simple Packing List";
 
     [ObservableProperty]
     private string packingText = "PackingList";
@@ -142,6 +148,24 @@ public partial class MainViewModel : ObservableObject
         _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
         _placesService = new GooglePlacesService();
         _weatherService = new WeatherService();
+        _llmTimer.Interval = TimeSpan.FromSeconds(1);
+        _llmTimer.Tick += _llmTimer_Tick;
+    }
+
+    private async void _llmTimer_Tick(object? sender, object e)
+    {
+        _llmTimer.Stop();
+        Progress<string> progress = new();
+
+        string prompt = $"""
+            Trip to
+            - {Destination}
+            - From {StartDate}
+            - To {EndDate}
+            - {WeatherStatus}
+            """;
+        string wcrPrompt = await Singleton<WcrService>.Instance.TextResponseWithProgress(prompt, progress);
+        ListTitle = wcrPrompt;
     }
 
     [RelayCommand]
@@ -264,7 +288,7 @@ public partial class MainViewModel : ObservableObject
             IsLoadingWeather = true;
             WeatherStatus = "Loading weather forecast...";
 
-            var weatherInfo = await _weatherService.GetWeatherForecastAsync(
+            WeatherInfo? weatherInfo = await _weatherService.GetWeatherForecastAsync(
                 selectedPlace.Latitude, 
                 selectedPlace.Longitude,
                 StartDate.Value,
@@ -366,7 +390,9 @@ public partial class MainViewModel : ObservableObject
         // Add weather-based recommendations if available
         if (Weather is not null)
         {
-            var weatherRecommendations = new List<string>();
+            _llmTimer.Stop();
+            _llmTimer.Start();
+            List<string> weatherRecommendations = new List<string>();
             
             if (Weather?.IsRainy is true)
             {

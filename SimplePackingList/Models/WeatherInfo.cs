@@ -14,8 +14,8 @@ public class WeatherInfo
     public DateTimeOffset ForecastDate { get; set; }
     public string Icon { get; set; } = string.Empty;
 
-    public bool IsHot => MaxTemperature > 28;
-    public bool IsCold => MinTemperature < 10;
+    public bool IsHot => MaxTemperature > 80;
+    public bool IsCold => MinTemperature < 50;
     public bool IsRainy => Condition.Contains("rain", StringComparison.OrdinalIgnoreCase) || 
                           Description.Contains("rain", StringComparison.OrdinalIgnoreCase);
     public bool IsSnowy => Condition.Contains("snow", StringComparison.OrdinalIgnoreCase) || 
@@ -27,6 +27,6 @@ public class WeatherInfo
 
     public override string ToString()
     {
-        return $"{ForecastDate:MMM dd}: {Condition}, {Temperature:F1}°C ({MinTemperature:F1}°C - {MaxTemperature:F1}°C)";
+        return $"{ForecastDate:MMM dd}: {Condition}, {Temperature:F1}°F";
     }
 }
