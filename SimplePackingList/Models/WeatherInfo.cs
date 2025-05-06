@@ -27,6 +27,7 @@ public class WeatherInfo
 
     public override string ToString()
     {
-        return $"{ForecastDate:MMM dd}: {Condition}, {Temperature:F1}°F";
+        // return $"{ForecastDate:MMM dd}: {Condition}, {Temperature:F1}°F";
+        return $"{ForecastDate:MMM dd}: {Condition}, {Temperature:F1}°F, {Humidity}% humidity,  Has Precipitation {HasPrecipitation}, {Description}";
     }
 }
