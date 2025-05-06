@@ -13,9 +13,11 @@
             <RowDefinition Height="auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
-        <TitleBar
-            x:Name="Titlebar"
-            Title="Simple Packing List" />
+        <TitleBar x:Name="Titlebar" Title="Simple Packing List">
+            <TitleBar.IconSource>
+                <ImageIconSource ImageSource="ms-appx:///Assets/PackList.ico" />
+            </TitleBar.IconSource>
+        </TitleBar>
         <local:MainPage Grid.Row="1" />
     </Grid>
 </Window>
