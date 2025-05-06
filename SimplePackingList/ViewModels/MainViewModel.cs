@@ -87,6 +87,18 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private ObservableCollection<PlacePrediction> placeSuggestions = [];
 
+    [ObservableProperty]
+    private bool isShowingBotNotes = false;
+
+    [ObservableProperty]
+    private bool isLoadingBotNotes = false;
+
+    [ObservableProperty]
+    private string botNotes = string.Empty;
+
+    [ObservableProperty]
+    private Visibility copyBotNotesVisible = Visibility.Collapsed;
+
     partial void OnEndDateChanged(DateTimeOffset? oldValue, DateTimeOffset? newValue)
     {
         UpdateDaysAndText();
@@ -133,7 +145,15 @@ public partial class MainViewModel : ObservableObject
         UpdateDaysAndText();
     }
 
-    partial void OnDestinationChanged(string oldValue, string newValue)
+    partial void OnIsLoadingBotNotesChanged(bool value)
+    {
+        if (value)
+            CopyBotNotesVisible = Visibility.Collapsed;
+        else
+            CopyBotNotesVisible = Visibility.Visible;
+    }
+
+    partial void OnDestinationChanged(string? oldValue, string newValue)
     {
         UpdateDaysAndText();
         if (!string.IsNullOrEmpty(newValue))
@@ -154,18 +174,23 @@ public partial class MainViewModel : ObservableObject
 
     private async void _llmTimer_Tick(object? sender, object e)
     {
+        IsLoadingBotNotes = true;
+        IsShowingBotNotes = true;
+        BotNotes = "";
         _llmTimer.Stop();
         Progress<string> progress = new();
 
         string prompt = $"""
-            Trip to
-            - {Destination}
-            - From {StartDate}
-            - To {EndDate}
-            - {WeatherStatus}
+            {Weather}
             """;
         string wcrPrompt = await Singleton<WcrService>.Instance.TextResponseWithProgress(prompt, progress);
-        ListTitle = wcrPrompt;
+
+        // remove empty lines and spaces before hyphens
+        wcrPrompt = wcrPrompt.Replace($"{Environment.NewLine}{Environment.NewLine}", Environment.NewLine);
+        wcrPrompt = wcrPrompt.Replace(" -", "-");
+
+        BotNotes = wcrPrompt.Trim();
+        IsLoadingBotNotes = false;
     }
 
     [RelayCommand]
@@ -182,7 +207,14 @@ public partial class MainViewModel : ObservableObject
         Clipboard.SetContentWithOptions(textPackage, options);
     }
 
-    // Method triggered when the user submits a query in the PlacesSearchBox
+    [RelayCommand]
+    public void CopyToPackingList()
+    {
+        PackingText += Environment.NewLine;
+        PackingText += Environment.NewLine;
+        PackingText += BotNotes;
+    }
+
     public void SearchPlaces(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args)
     {
         if (args.ChosenSuggestion is not null)
@@ -253,7 +285,6 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
-    // Method triggered when a place suggestion is chosen
     public void OnPlaceSelected(AutoSuggestBox sender, AutoSuggestBoxSuggestionChosenEventArgs args)
     {
         if (args.SelectedItem != null)
@@ -264,7 +295,7 @@ public partial class MainViewModel : ObservableObject
 
     private async void UpdateWeatherData()
     {
-        if (StartDate == null || string.IsNullOrEmpty(Destination))
+        if (StartDate is null || string.IsNullOrEmpty(Destination))
         {
             Weather = null;
             WeatherStatus = "Set both destination and dates to see weather forecast";
@@ -276,6 +307,14 @@ public partial class MainViewModel : ObservableObject
         if (selectedPlace == null || (selectedPlace.Latitude == 0 && selectedPlace.Longitude == 0))
         {
             WeatherStatus = "Location coordinates not available for weather forecast";
+            return;
+        }
+
+        // check if start day is more than 4 days ahead
+        TimeSpan timeDifference = StartDate.Value - DateTimeOffset.Now;
+        if (timeDifference.TotalDays > 5)
+        {
+            WeatherStatus = "Weather forecast is limited to 5 days ahead";
             return;
         }
 
@@ -392,51 +431,51 @@ public partial class MainViewModel : ObservableObject
         {
             _llmTimer.Stop();
             _llmTimer.Start();
-            List<string> weatherRecommendations = new List<string>();
+            // List<string> weatherRecommendations = [];
             
-            if (Weather?.IsRainy is true)
-            {
-                weatherRecommendations.Add("- Umbrella");
-                weatherRecommendations.Add("- Raincoat or waterproof jacket");
-                weatherRecommendations.Add("- Waterproof shoes");
-            }
+            //if (Weather?.IsRainy is true)
+            //{
+            //    weatherRecommendations.Add("- Umbrella");
+            //    weatherRecommendations.Add("- Raincoat or waterproof jacket");
+            //    weatherRecommendations.Add("- Waterproof shoes");
+            //}
             
-            if (Weather?.IsSnowy is true)
-            {
-                weatherRecommendations.Add("- Heavy winter coat");
-                weatherRecommendations.Add("- Snow boots");
-                weatherRecommendations.Add("- Gloves");
-                weatherRecommendations.Add("- Winter hat");
-                weatherRecommendations.Add("- Scarf");
-                weatherRecommendations.Add("- Thermal underwear");
-            }
+            //if (Weather?.IsSnowy is true)
+            //{
+            //    weatherRecommendations.Add("- Heavy winter coat");
+            //    weatherRecommendations.Add("- Snow boots");
+            //    weatherRecommendations.Add("- Gloves");
+            //    weatherRecommendations.Add("- Winter hat");
+            //    weatherRecommendations.Add("- Scarf");
+            //    weatherRecommendations.Add("- Thermal underwear");
+            //}
             
-            if (Weather?.IsCold is true)
-            {
-                weatherRecommendations.Add("- Warm jacket");
-                weatherRecommendations.Add("- Long sleeve shirts");
-                weatherRecommendations.Add("- Sweater or hoodie");
-            }
+            //if (Weather?.IsCold is true)
+            //{
+            //    weatherRecommendations.Add("- Warm jacket");
+            //    weatherRecommendations.Add("- Long sleeve shirts");
+            //    weatherRecommendations.Add("- Sweater or hoodie");
+            //}
             
-            if (Weather?.IsHot is true)
-            {
-                weatherRecommendations.Add("- Sunscreen");
-                weatherRecommendations.Add("- Hat or cap");
-                weatherRecommendations.Add("- Sunglasses");
-                weatherRecommendations.Add("- Light, breathable clothing");
-                weatherRecommendations.Add("- Water bottle");
-            }
+            //if (Weather?.IsHot is true)
+            //{
+            //    weatherRecommendations.Add("- Sunscreen");
+            //    weatherRecommendations.Add("- Hat or cap");
+            //    weatherRecommendations.Add("- Sunglasses");
+            //    weatherRecommendations.Add("- Light, breathable clothing");
+            //    weatherRecommendations.Add("- Water bottle");
+            //}
             
-            if (Weather?.IsWindy is true)
-            {
-                weatherRecommendations.Add("- Windbreaker jacket");
-            }
+            //if (Weather?.IsWindy is true)
+            //{
+            //    weatherRecommendations.Add("- Windbreaker jacket");
+            //}
             
-            if (weatherRecommendations.Count > 0)
-            {
-                PackingText += Environment.NewLine + Environment.NewLine + $"Weather recommendations ({Weather?.ForecastDate:MMM dd}, {Weather?.Condition}):" + Environment.NewLine;
-                PackingText += string.Join(Environment.NewLine, weatherRecommendations);
-            }
+            //if (weatherRecommendations.Count > 0)
+            //{
+            //    PackingText += Environment.NewLine + Environment.NewLine + $"Weather recommendations ({Weather?.ForecastDate:MMM dd}, {Weather?.Condition}):" + Environment.NewLine;
+            //    PackingText += string.Join(Environment.NewLine, weatherRecommendations);
+            //}
         }
     }
 }

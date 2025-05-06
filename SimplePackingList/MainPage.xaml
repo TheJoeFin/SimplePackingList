@@ -7,6 +7,7 @@
     xmlns:local="using:SimplePackingList"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:ser="using:SimplePackingList.Services"
+    xmlns:toolkit="using:SimplePackingList.Converters"
     DataContext="{x:Bind ViewModel}"
     mc:Ignorable="d">
 
@@ -80,18 +81,22 @@
                     IsTodayHighlighted="True" />
             </Grid>
 
-            <CheckBox Content="Have access to Laundry" IsChecked="{x:Bind ViewModel.HasLaundry, Mode=TwoWay}" />
+            <Expander Header="More Options">
+                <StackPanel Orientation="Vertical" Spacing="10">
+                    <CheckBox Content="Have access to Laundry" IsChecked="{x:Bind ViewModel.HasLaundry, Mode=TwoWay}" />
 
-            <TextBlock Margin="0,-10,0,-10" Text="Number of formal events" />
-            <NumberBox
-                Minimum="0"
-                SpinButtonPlacementMode="Inline"
-                Value="{x:Bind ViewModel.NumberOfFormalEvents, Mode=TwoWay}" />
-            <CheckBox Content="Running" IsChecked="{x:Bind ViewModel.IsRunning, Mode=TwoWay}" />
-            <CheckBox Content="Hiking" IsChecked="{x:Bind ViewModel.IsHiking, Mode=TwoWay}" />
-            <CheckBox Content="Swimming" IsChecked="{x:Bind ViewModel.IsSwimming, Mode=TwoWay}" />
-            <CheckBox Content="Snow Sports" IsChecked="{x:Bind ViewModel.IsSnowSport, Mode=TwoWay}" />
-            <CheckBox Content="Need a gift" IsChecked="{x:Bind ViewModel.IsGifting, Mode=TwoWay}" />
+                    <TextBlock Margin="0,-10,0,-10" Text="Number of formal events" />
+                    <NumberBox
+                        Minimum="0"
+                        SpinButtonPlacementMode="Inline"
+                        Value="{x:Bind ViewModel.NumberOfFormalEvents, Mode=TwoWay}" />
+                    <CheckBox Content="Running" IsChecked="{x:Bind ViewModel.IsRunning, Mode=TwoWay}" />
+                    <CheckBox Content="Hiking" IsChecked="{x:Bind ViewModel.IsHiking, Mode=TwoWay}" />
+                    <CheckBox Content="Swimming" IsChecked="{x:Bind ViewModel.IsSwimming, Mode=TwoWay}" />
+                    <CheckBox Content="Snow Sports" IsChecked="{x:Bind ViewModel.IsSnowSport, Mode=TwoWay}" />
+                    <CheckBox Content="Need a gift" IsChecked="{x:Bind ViewModel.IsGifting, Mode=TwoWay}" />
+                </StackPanel>
+            </Expander>
 
             <StackPanel Visibility="{x:Bind ViewModel.Weather, Mode=OneWay, Converter={StaticResource NullToVisibilityConverter}}">
                 <TextBlock
@@ -131,5 +136,35 @@
             IsTextSelectionEnabled="True"
             Style="{ThemeResource BodyTextBlockStyle}"
             Text="{x:Bind ViewModel.PackingText, Mode=OneWay}" />
+        <InfoBar
+            Title="Packing Bot recommendations"
+            Grid.RowSpan="2"
+            Grid.ColumnSpan="2"
+            HorizontalAlignment="Right"
+            VerticalAlignment="Bottom"
+            Background="{StaticResource SolidBackgroundFillColorSecondaryBrush}"
+            IsOpen="{x:Bind ViewModel.IsShowingBotNotes, Mode=TwoWay}">
+            <Grid Padding="2,0,2,20">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="auto" />
+                </Grid.RowDefinitions>
+                <ProgressRing IsActive="{x:Bind ViewModel.IsLoadingBotNotes, Mode=OneWay}" />
+                <TextBlock
+                    IsTextSelectionEnabled="True"
+                    Text="{x:Bind ViewModel.BotNotes, Mode=OneWay}"
+                    TextWrapping="Wrap" />
+                <HyperlinkButton
+                    Grid.Row="1"
+                    HorizontalAlignment="Right"
+                    Command="{x:Bind ViewModel.CopyToPackingListCommand}"
+                    Visibility="{x:Bind ViewModel.CopyBotNotesVisible, Mode=OneWay}">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <SymbolIcon Symbol="Copy" />
+                        <TextBlock Text="Copy to packing list" />
+                    </StackPanel>
+                </HyperlinkButton>
+            </Grid>
+        </InfoBar>
     </Grid>
 </Page>
