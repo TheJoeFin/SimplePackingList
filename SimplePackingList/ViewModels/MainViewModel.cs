@@ -174,6 +174,9 @@ public partial class MainViewModel : ObservableObject
 
     private async void _llmTimer_Tick(object? sender, object e)
     {
+        if (!WcrUtilities.HasNpu() || !WcrUtilities.DoesWindowsSupportAI())
+            return;
+
         IsLoadingBotNotes = true;
         IsShowingBotNotes = true;
         BotNotes = "";

@@ -8,15 +8,15 @@
   IgnorableNamespaces="uap rescap">
 
   <Identity
-    Name="36406337-2dae-4901-a334-295f46b0e6ca"
-    Publisher="CN=josep"
+    Name="40087JoeFinApps.35294ABFE0F18"
+    Publisher="CN=153F3B0F-BA3D-4964-8098-71AC78A1DF6A"
     Version="1.0.0.0" />
 
-  <mp:PhoneIdentity PhoneProductId="36406337-2dae-4901-a334-295f46b0e6ca" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
+  <mp:PhoneIdentity PhoneProductId="d1c61051-f6ff-4856-b339-28f1cd66ee1c" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
   <Properties>
-    <DisplayName>SimplePackingList</DisplayName>
-    <PublisherDisplayName>josep</PublisherDisplayName>
+    <DisplayName>Simple Packing List</DisplayName>
+    <PublisherDisplayName>JoeFinApps</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
 
@@ -34,7 +34,7 @@
       Executable="$targetnametoken$.exe"
       EntryPoint="$targetentrypoint$">
       <uap:VisualElements
-        DisplayName="SimplePackingList"
+        DisplayName="Simple Packing List"
         Description="SimplePackingList"
         BackgroundColor="transparent"
         Square150x150Logo="Assets\Square150x150Logo.png"
