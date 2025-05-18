@@ -1,6 +1,6 @@
 # Simple Packing List
 
-<img src="SimplePackingList/Assets/SimplePackingList-Icon.png" height=200/>
+<img src="SimplePackingList/Assets/SimplePackingList-Icon.png" height="200" />
 
 ## Purpose of this app
 
