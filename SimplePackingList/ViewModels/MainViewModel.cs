@@ -13,18 +13,23 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Windows.ApplicationModel.DataTransfer;
+using Windows.Networking.Connectivity;
 
 namespace SimplePackingList.ViewModels;
+
 public partial class MainViewModel : ObservableObject
 {
     // Debounce related fields
     private CancellationTokenSource? _placesSearchCts;
     private const int _debounceDelay = 300; // milliseconds
+    private readonly ConnectionProfile? connectionProfile;
     private readonly DispatcherQueue? _dispatcherQueue;
-    private readonly IPlacesService _placesService;
-    private readonly IWeatherService _weatherService;
+    private readonly GooglePlacesService _placesService;
+    private readonly WeatherService _weatherService;
     private CancellationTokenSource? _weatherCts;
     private readonly DispatcherTimer _llmTimer = new();
+    private readonly DispatcherTimer _saveSettingsTimer = new();
+    private readonly DispatcherTimer _propChangedTimer = new();
 
     private readonly string standardStuff = """
         - Toothbrush
@@ -39,76 +44,62 @@ public partial class MainViewModel : ObservableObject
     private int numberOfDays = 3;
 
     [ObservableProperty]
-    private string listTitle = "Simple Packing List";
+    public partial ObservableCollection<Trip> TripsList { get; set; }
 
     [ObservableProperty]
-    private string packingText = "PackingList";
+    public partial Trip CurrentTrip { get; set; }
 
     [ObservableProperty]
-    private DateTimeOffset? startDate;
+    public partial string ListTitle { get; set; } = "Simple Packing List";
 
     [ObservableProperty]
-    private DateTimeOffset? endDate;
+    public partial bool IsRunning { get; set; } = false;
 
     [ObservableProperty]
-    private bool isRunning = false;
+    public partial bool IsSwimming { get; set; } = false;
 
     [ObservableProperty]
-    private bool isSwimming = false;
+    public partial bool IsHiking { get; set; } = false;
 
     [ObservableProperty]
-    private bool isHiking = false;
+    public partial bool IsSnowSport { get; set; } = false;
 
     [ObservableProperty]
-    private bool isSnowSport = false;
+    public partial bool IsGifting { get; set; } = false;
 
     [ObservableProperty]
-    private bool isGifting = false;
+    public partial int NumberOfFormalEvents { get; set; } = 0;
 
     [ObservableProperty]
-    private int numberOfFormalEvents = 0;
+    public partial bool HasLaundry { get; set; } = false;
 
     [ObservableProperty]
-    private bool hasLaundry = false;
+    public partial WeatherInfo? Weather { get; set; }
 
     [ObservableProperty]
-    private WeatherInfo? weather;
+    public partial string WeatherStatus { get; set; } = "No weather data available";
 
     [ObservableProperty]
-    private string weatherStatus = "No weather data available";
-
-    [ObservableProperty]
-    private bool isLoadingWeather = false;
+    public partial bool IsLoadingWeather { get; set; } = false;
 
     // Place-related properties
     [ObservableProperty]
-    private string destination = string.Empty;
+    public partial string Destination { get; set; } = string.Empty;
 
     [ObservableProperty]
-    private ObservableCollection<PlacePrediction> placeSuggestions = [];
+    public partial ObservableCollection<PlacePrediction> PlaceSuggestions { get; set; } = [];
 
     [ObservableProperty]
-    private bool isShowingBotNotes = false;
+    public partial bool IsShowingBotNotes { get; set; } = false;
 
     [ObservableProperty]
-    private bool isLoadingBotNotes = false;
+    public partial bool IsLoadingBotNotes { get; set; } = false;
 
     [ObservableProperty]
-    private string botNotes = string.Empty;
+    public partial string BotNotes { get; set; } = string.Empty;
 
     [ObservableProperty]
-    private Visibility copyBotNotesVisible = Visibility.Collapsed;
-
-    partial void OnEndDateChanged(DateTimeOffset? oldValue, DateTimeOffset? newValue)
-    {
-        UpdateDaysAndText();
-    }
-
-    partial void OnStartDateChanged(DateTimeOffset? oldValue, DateTimeOffset? newValue)
-    {
-        UpdateDaysAndText();
-        UpdateWeatherData();
-    }
+    public partial Visibility CopyBotNotesVisible { get; set; } = Visibility.Collapsed;
 
     partial void OnIsRunningChanged(bool value)
     {
@@ -153,7 +144,7 @@ public partial class MainViewModel : ObservableObject
             CopyBotNotesVisible = Visibility.Visible;
     }
 
-    partial void OnDestinationChanged(string? oldValue, string newValue)
+    partial void OnDestinationChanged(string oldValue, string newValue)
     {
         UpdateDaysAndText();
         if (!string.IsNullOrEmpty(newValue))
@@ -165,14 +156,55 @@ public partial class MainViewModel : ObservableObject
     public MainViewModel()
     {
         // Get the dispatcher queue for the current thread
+        connectionProfile = NetworkInformation.GetInternetConnectionProfile();
         _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
         _placesService = new GooglePlacesService();
         _weatherService = new WeatherService();
         _llmTimer.Interval = TimeSpan.FromSeconds(1);
-        _llmTimer.Tick += _llmTimer_Tick;
+        _llmTimer.Tick += LlmTimer_Tick;
+
+        _saveSettingsTimer.Interval = TimeSpan.FromMilliseconds(500);
+        _saveSettingsTimer.Tick += SaveSettingsTimer_Tick;
+
+        _propChangedTimer.Interval = TimeSpan.FromMilliseconds(400);
+        _propChangedTimer.Tick += PropChangedTimer_Tick;
     }
 
-    private async void _llmTimer_Tick(object? sender, object e)
+    private void PropChangedTimer_Tick(object? sender, object e)
+    {
+        _saveSettingsTimer.Stop();
+
+        UpdateDaysAndText();
+        UpdateWeatherData();
+
+        _saveSettingsTimer.Start();
+    }
+
+    private void SaveSettingsTimer_Tick(object? sender, object e)
+    {
+        _saveSettingsTimer.Stop();
+
+        LocalSettingsService.SaveSettingAsync(SettingKeys.LastTrip.ToString(), CurrentTrip);
+    }
+
+    public async Task LoadState()
+    {
+        Trip lastTrip = LocalSettingsService.ReadSettingAsync<Trip>(SettingKeys.LastTrip.ToString());
+        if (lastTrip is not null)
+            CurrentTrip = lastTrip;
+        else
+            CurrentTrip = Trip.NewTrip();
+
+        CurrentTrip.PropertyChanging += CurrentTrip_PropertyChanging;
+    }
+
+    private void CurrentTrip_PropertyChanging(object? sender, System.ComponentModel.PropertyChangingEventArgs e)
+    {
+        _propChangedTimer.Stop();
+        _propChangedTimer.Start();
+    }
+
+    private async void LlmTimer_Tick(object? sender, object e)
     {
         if (!WcrUtilities.HasNpu() || !WcrUtilities.DoesWindowsSupportAI())
             return;
@@ -200,7 +232,7 @@ public partial class MainViewModel : ObservableObject
     public void CopyToClipboard()
     {
         DataPackage textPackage = new();
-        textPackage.SetText(PackingText);
+        textPackage.SetText(CurrentTrip.PackingText);
 
         ClipboardContentOptions options = new();
         options.HistoryFormats.Add(StandardDataFormats.Text);
@@ -213,17 +245,17 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     public void CopyToPackingList()
     {
-        PackingText += Environment.NewLine;
-        PackingText += Environment.NewLine;
-        PackingText += BotNotes;
+        CurrentTrip.PackingText += Environment.NewLine;
+        CurrentTrip.PackingText += Environment.NewLine;
+        CurrentTrip.PackingText += BotNotes;
     }
 
     public void SearchPlaces(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args)
     {
-        if (args.ChosenSuggestion is not null)
+        if (args.ChosenSuggestion is string chosenSelection)
         {
             // User selected a suggestion
-            Destination = args.ChosenSuggestion.ToString();
+            Destination = chosenSelection;
         }
         else if (!string.IsNullOrEmpty(args.QueryText))
         {
@@ -233,7 +265,7 @@ public partial class MainViewModel : ObservableObject
     }
 
     // Method triggered when the text changes in the PlacesSearchBox
-    public void OnPlacesTextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
+    public async void OnPlacesTextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
     {
         // Only get results when it's user typing
         if (args.Reason == AutoSuggestionBoxTextChangeReason.UserInput)
@@ -250,12 +282,20 @@ public partial class MainViewModel : ObservableObject
             _placesSearchCts = new CancellationTokenSource();
 
             // Start a new debounced search task
-            DebounceSearchPlacesAsync(input, _placesSearchCts.Token);
+            await DebounceSearchPlacesAsync(input, _placesSearchCts.Token);
         }
     }
 
     private async Task DebounceSearchPlacesAsync(string searchText, CancellationToken cancellationToken)
     {
+        if (connectionProfile is null)
+            return;
+
+        NetworkConnectivityLevel connectionLevel = connectionProfile.GetNetworkConnectivityLevel();
+
+        if (connectionLevel == NetworkConnectivityLevel.None)
+            return;
+
         try
         {
             // Wait for the debounce delay
@@ -290,15 +330,19 @@ public partial class MainViewModel : ObservableObject
 
     public void OnPlaceSelected(AutoSuggestBox sender, AutoSuggestBoxSuggestionChosenEventArgs args)
     {
-        if (args.SelectedItem != null)
+        if (args.SelectedItem is string selectedPlace)
         {
-            Destination = args.SelectedItem.ToString();
+            Destination = selectedPlace;
         }
     }
 
     private async void UpdateWeatherData()
     {
-        if (StartDate is null || string.IsNullOrEmpty(Destination))
+        if (connectionProfile is null)
+            return;
+
+        NetworkConnectivityLevel connectionLevel = connectionProfile.GetNetworkConnectivityLevel();
+        if (connectionLevel == NetworkConnectivityLevel.None || CurrentTrip.StartDate is null || string.IsNullOrEmpty(Destination))
         {
             Weather = null;
             WeatherStatus = "Set both destination and dates to see weather forecast";
@@ -314,7 +358,7 @@ public partial class MainViewModel : ObservableObject
         }
 
         // check if start day is more than 4 days ahead
-        TimeSpan timeDifference = StartDate.Value - DateTimeOffset.Now;
+        TimeSpan timeDifference = CurrentTrip.StartDate.Value - DateTimeOffset.Now;
         if (timeDifference.TotalDays > 5)
         {
             WeatherStatus = "Weather forecast is limited to 5 days ahead";
@@ -333,7 +377,7 @@ public partial class MainViewModel : ObservableObject
             WeatherInfo? weatherInfo = await _weatherService.GetWeatherForecastAsync(
                 selectedPlace.Latitude, 
                 selectedPlace.Longitude,
-                StartDate.Value,
+                CurrentTrip.StartDate.Value,
                 _weatherCts.Token);
 
             _dispatcherQueue?.TryEnqueue(() =>
@@ -362,18 +406,18 @@ public partial class MainViewModel : ObservableObject
 
     private void UpdateDaysAndText()
     {
-        if (EndDate is null || StartDate is null)
+        if (CurrentTrip.EndDate is null || CurrentTrip.StartDate is null)
             return;
 
-        numberOfDays = (int)(EndDate.Value - StartDate.Value).TotalDays;
+        numberOfDays = (int)(CurrentTrip.EndDate.Value - CurrentTrip.StartDate.Value).TotalDays;
         numberOfDays = Math.Abs(numberOfDays);
 
         // Include destination in the packing list title if available
-        PackingText = string.IsNullOrEmpty(Destination)
-            ? $"Packing List for {StartDate:MMM dd} - {EndDate:MMM dd} for {numberOfDays} nights"
-            : $"Packing List for {Destination} from {StartDate:MMM dd} - {EndDate:MMM dd} for {numberOfDays} nights";
+        CurrentTrip.PackingText = string.IsNullOrEmpty(Destination)
+            ? $"Packing List for {CurrentTrip.StartDate:MMM dd} - {CurrentTrip.EndDate:MMM dd} for {numberOfDays} nights"
+            : $"Packing List for {Destination} from {CurrentTrip.StartDate:MMM dd} - {CurrentTrip.EndDate:MMM dd} for {numberOfDays} nights";
 
-        PackingText += Environment.NewLine + standardStuff;
+        CurrentTrip.PackingText += Environment.NewLine + standardStuff;
 
         int effectiveDays = numberOfDays;
 
@@ -388,12 +432,12 @@ public partial class MainViewModel : ObservableObject
             - {effectiveDays} pair(s) of underwear
             """;
 
-        PackingText += Environment.NewLine + clothes;
+        CurrentTrip.PackingText += Environment.NewLine + clothes;
 
         if (IsRunning)
         {
             int numberOfRuns = (int)Math.Ceiling(effectiveDays / 3.0);
-            PackingText += Environment.NewLine + $"""
+            CurrentTrip.PackingText += Environment.NewLine + $"""
 
                 - running shoes
                 - {numberOfRuns} running shirt(s)
@@ -406,27 +450,27 @@ public partial class MainViewModel : ObservableObject
 
         if (IsSwimming)
         {
-            PackingText += Environment.NewLine + "- Swimsuit";
+            CurrentTrip.PackingText += Environment.NewLine + "- Swimsuit";
         }
 
         if (IsHiking)
         {
-            PackingText += Environment.NewLine + "- Hiking boots";
+            CurrentTrip.PackingText += Environment.NewLine + "- Hiking boots";
         }
 
         if (IsSnowSport)
         {
-            PackingText += Environment.NewLine + "- Snow boots";
+            CurrentTrip.PackingText += Environment.NewLine + "- Snow boots";
         }
 
         if (IsGifting)
         {
-            PackingText += Environment.NewLine + "- Gift";
+            CurrentTrip.PackingText += Environment.NewLine + "- Gift";
         }
 
         if (NumberOfFormalEvents > 0)
         {
-            PackingText += Environment.NewLine + $"- {NumberOfFormalEvents} Formal outfit(s)";
+            CurrentTrip.PackingText += Environment.NewLine + $"- {NumberOfFormalEvents} Formal outfit(s)";
         }
 
         // Add weather-based recommendations if available

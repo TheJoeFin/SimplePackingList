@@ -1,3 +1,4 @@
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using SimplePackingList.ViewModels;
 
@@ -10,5 +11,10 @@ public sealed partial class MainPage : Page
     public MainPage()
     {
         InitializeComponent();
+    }
+
+    private async void Page_Loaded(object sender, RoutedEventArgs e)
+    {
+        await ViewModel.LoadState();
     }
 }

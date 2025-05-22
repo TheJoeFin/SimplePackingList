@@ -5,10 +5,12 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:local="using:SimplePackingList"
+    xmlns:m="using:SimplePackingList.Models"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:ser="using:SimplePackingList.Services"
     xmlns:toolkit="using:SimplePackingList.Converters"
     DataContext="{x:Bind ViewModel}"
+    Loaded="Page_Loaded"
     mc:Ignorable="d">
 
     <Grid
@@ -42,11 +44,14 @@
                 Width="280"
                 ItemsSource="{x:Bind ViewModel.PlaceSuggestions}"
                 PlaceholderText="Search for a place..."
-                QuerySubmitted="{x:Bind ViewModel.SearchPlaces, Mode=OneWay}"
-                SuggestionChosen="{x:Bind ViewModel.OnPlaceSelected, Mode=OneWay}"
-                TextChanged="{x:Bind ViewModel.OnPlacesTextChanged, Mode=OneWay}">
+                QuerySubmitted="{x:Bind ViewModel.SearchPlaces,
+                                        Mode=OneWay}"
+                SuggestionChosen="{x:Bind ViewModel.OnPlaceSelected,
+                                          Mode=OneWay}"
+                TextChanged="{x:Bind ViewModel.OnPlacesTextChanged,
+                                     Mode=OneWay}">
                 <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="ser:PlacePrediction">
+                    <DataTemplate x:DataType="m:PlacePrediction">
                         <StackPanel Orientation="Vertical" Spacing="4">
                             <TextBlock Text="{x:Bind Description}" />
                         </StackPanel>
@@ -69,7 +74,8 @@
                 <CalendarDatePicker
                     x:Name="StartDateCalendar"
                     Grid.Row="1"
-                    Date="{x:Bind ViewModel.StartDate, Mode=TwoWay}"
+                    Date="{x:Bind ViewModel.CurrentTrip.StartDate,
+                                  Mode=TwoWay}"
                     IsTodayHighlighted="True" />
 
                 <TextBlock Grid.Column="1" Text="End Date" />
@@ -77,7 +83,8 @@
                     x:Name="EndDateCalendar"
                     Grid.Row="1"
                     Grid.Column="1"
-                    Date="{x:Bind ViewModel.EndDate, Mode=TwoWay}"
+                    Date="{x:Bind ViewModel.CurrentTrip.EndDate,
+                                  Mode=TwoWay}"
                     IsTodayHighlighted="True" />
             </Grid>
 
@@ -89,7 +96,8 @@
                     <NumberBox
                         Minimum="0"
                         SpinButtonPlacementMode="Inline"
-                        Value="{x:Bind ViewModel.NumberOfFormalEvents, Mode=TwoWay}" />
+                        Value="{x:Bind ViewModel.NumberOfFormalEvents,
+                                       Mode=TwoWay}" />
                     <CheckBox Content="Running" IsChecked="{x:Bind ViewModel.IsRunning, Mode=TwoWay}" />
                     <CheckBox Content="Hiking" IsChecked="{x:Bind ViewModel.IsHiking, Mode=TwoWay}" />
                     <CheckBox Content="Swimming" IsChecked="{x:Bind ViewModel.IsSwimming, Mode=TwoWay}" />
@@ -109,33 +117,42 @@
                     Height="20"
                     Margin="0,5,0,0"
                     HorizontalAlignment="Left"
-                    IsActive="{x:Bind ViewModel.IsLoadingWeather, Mode=OneWay}" />
+                    IsActive="{x:Bind ViewModel.IsLoadingWeather,
+                                      Mode=OneWay}" />
             </StackPanel>
 
         </StackPanel>
-        <TextBlock
-            Grid.Row="0"
-            Grid.Column="1"
-            VerticalAlignment="Bottom"
-            Style="{ThemeResource SubtitleTextBlockStyle}"
-            Text="{x:Bind ViewModel.ListTitle, Mode=OneWay}" />
-        <HyperlinkButton
-            Grid.Column="1"
-            HorizontalAlignment="Right"
-            VerticalAlignment="Bottom"
-            Command="{x:Bind ViewModel.CopyToClipboardCommand}">
-            <StackPanel Orientation="Horizontal" Spacing="8">
-                <SymbolIcon Symbol="Copy" />
-                <TextBlock Text="Copy to clipboard" />
-            </StackPanel>
-        </HyperlinkButton>
+        <Grid Grid.Row="0" Grid.Column="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="auto" />
+            </Grid.ColumnDefinitions>
+            <TextBox
+                VerticalAlignment="Bottom"
+                PlaceholderText="Enter the name of the trip here..."
+                Style="{ThemeResource DefaultTextBoxStyle}"
+                Text="{x:Bind ViewModel.CurrentTrip.Name,
+                              Mode=TwoWay,
+                              UpdateSourceTrigger=PropertyChanged}" />
+            <HyperlinkButton
+                Grid.Column="1"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Bottom"
+                Command="{x:Bind ViewModel.CopyToClipboardCommand}">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <SymbolIcon Symbol="Copy" />
+                    <TextBlock Text="Copy to clipboard" />
+                </StackPanel>
+            </HyperlinkButton>
+        </Grid>
         <TextBlock
             Grid.Row="1"
             Grid.Column="1"
             FontFamily="Courier New"
             IsTextSelectionEnabled="True"
             Style="{ThemeResource BodyTextBlockStyle}"
-            Text="{x:Bind ViewModel.PackingText, Mode=OneWay}" />
+            Text="{x:Bind ViewModel.CurrentTrip.PackingText,
+                          Mode=OneWay}" />
         <InfoBar
             Title="Packing Bot recommendations"
             Grid.RowSpan="2"
@@ -143,7 +160,8 @@
             HorizontalAlignment="Right"
             VerticalAlignment="Bottom"
             Background="{StaticResource SolidBackgroundFillColorSecondaryBrush}"
-            IsOpen="{x:Bind ViewModel.IsShowingBotNotes, Mode=TwoWay}">
+            IsOpen="{x:Bind ViewModel.IsShowingBotNotes,
+                            Mode=TwoWay}">
             <Grid Padding="2,0,2,20">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="*" />
@@ -152,13 +170,15 @@
                 <ProgressRing IsActive="{x:Bind ViewModel.IsLoadingBotNotes, Mode=OneWay}" />
                 <TextBlock
                     IsTextSelectionEnabled="True"
-                    Text="{x:Bind ViewModel.BotNotes, Mode=OneWay}"
+                    Text="{x:Bind ViewModel.BotNotes,
+                                  Mode=OneWay}"
                     TextWrapping="Wrap" />
                 <HyperlinkButton
                     Grid.Row="1"
                     HorizontalAlignment="Right"
                     Command="{x:Bind ViewModel.CopyToPackingListCommand}"
-                    Visibility="{x:Bind ViewModel.CopyBotNotesVisible, Mode=OneWay}">
+                    Visibility="{x:Bind ViewModel.CopyBotNotesVisible,
+                                        Mode=OneWay}">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <SymbolIcon Symbol="Copy" />
                         <TextBlock Text="Copy to packing list" />
