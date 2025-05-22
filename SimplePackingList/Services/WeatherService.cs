@@ -1,12 +1,10 @@
 using Microsoft.Windows.ApplicationModel.Resources;
 using SimplePackingList.Models;
 using System;
-using System.Collections.Generic;
 using System.Globalization;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -120,43 +118,4 @@ public class WeatherService : IWeatherService
             return null;
         }
     }
-
-    #region API Response Classes
-    // OpenWeatherMap OneCall API v3 response structure
-    public class OpenWeatherResponse
-    {
-        // Use lower case property names to match OpenWeatherMap JSON response
-        public float lat { get; set; }
-        public float lon { get; set; }
-        public string timezone { get; set; } = string.Empty;
-        public int timezone_offset { get; set; }
-        public WeatherData[] data { get; set; } = [];
-    }
-
-    public class WeatherData
-    {
-        public int dt { get; set; }
-        public int sunrise { get; set; }
-        public int sunset { get; set; }
-        public float temp { get; set; }
-        public float feels_like { get; set; }
-        public int pressure { get; set; }
-        public int humidity { get; set; }
-        public float dew_point { get; set; }
-        public float uvi { get; set; }
-        public int clouds { get; set; }
-        public int visibility { get; set; }
-        public float wind_speed { get; set; }
-        public int wind_deg { get; set; }
-        public WeatherCondition[] weather { get; set; } = [];
-    }
-
-    public class WeatherCondition
-    {
-        public int id { get; set; }
-        public string main { get; set; } = string.Empty;
-        public string description { get; set; } = string.Empty;
-        public string icon { get; set; } = string.Empty;
-    }
-    #endregion
 }

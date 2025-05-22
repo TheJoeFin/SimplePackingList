@@ -1,4 +1,5 @@
 using Microsoft.Windows.ApplicationModel.Resources;
+using SimplePackingList.Models;
 using System;
 using System.Collections.Generic;
 using System.Net.Http;
@@ -123,23 +124,5 @@ public class GooglePlacesService : IPlacesService
 
         [JsonPropertyName("lng")]
         public double Lng { get; set; }
-    }
-}
-
-public class PlacePrediction
-{
-    [JsonPropertyName("description")]
-    public string Description { get; set; } = "";
-
-    [JsonPropertyName("place_id")]
-    public string PlaceId { get; set; } = "";
-
-    // These properties don't come directly from the API but are populated after getting place details
-    public double Latitude { get; set; }
-    public double Longitude { get; set; }
-
-    public override string ToString()
-    {
-        return Description;
     }
 }
