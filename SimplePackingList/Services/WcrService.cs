@@ -1,5 +1,4 @@
-﻿using Microsoft.Windows.AI.ContentModeration;
-using Microsoft.Windows.AI.Generative;
+﻿using Microsoft.Windows.AI.Text;
 using System;
 using System.Threading.Tasks;
 using Windows.Foundation;
